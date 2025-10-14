@@ -1,6 +1,7 @@
-﻿using ECommerce.IdentityService.API.Domain.Entities;
+﻿using ECommerce.BuildingBlocks.Shared.Kernel.Auth.Options;
+using ECommerce.IdentityService.API.Domain.Entities;
 using ECommerce.IdentityService.API.DTOs;
-using ECommerce.IdentityService.API.Options;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -13,40 +14,48 @@ namespace ECommerce.IdentityService.API.Services;
 public sealed class JwtService : IJwtService
 {
     private readonly JwtOptions _jwtOptions;
+    private readonly UserManager<User> _userManager;
 
-    public JwtService(IOptions<JwtOptions> jwtOptions)
+    public JwtService(IOptions<JwtOptions> jwtOptions, UserManager<User> userManager)
     {
         _jwtOptions = jwtOptions.Value;
+        _userManager = userManager;
     }
 
     public async Task<TokenDTO> CreateTokenAsync(User user)
     {
-        var expires = DateTime.Now.Add(TimeSpan.FromSeconds(_jwtOptions.Expiration));
+        var expires = DateTime.UtcNow.Add(TimeSpan.FromSeconds(_jwtOptions.Expiration));
 
-        var claims = new Claim[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Exp, expires.ToString()),
-            new Claim(JwtRegisteredClaimNames.Iss, _jwtOptions.Issuer),
-            new Claim(JwtRegisteredClaimNames.Aud, _jwtOptions.Audience)
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email!),
+            new(ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim()),
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        JwtSecurityToken jwtSecurityToken = new(
+        // Kullanıcının rollerini al ve claim olarak ekle
+        var roles = await _userManager.GetRolesAsync(user);
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        // Kullanıcının claim'lerini al ve ekle
+        var userClaims = await _userManager.GetClaimsAsync(user);
+        claims.AddRange(userClaims);
+
+        var jwtSecurityToken = new JwtSecurityToken(
             issuer: _jwtOptions.Issuer,
             audience: _jwtOptions.Audience,
             claims: claims,
             notBefore: DateTime.UtcNow,
             expires: expires,
             signingCredentials: new SigningCredentials(
-                new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(_jwtOptions.SecretKey))
-                , SecurityAlgorithms.HmacSha256));
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SecretKey)),
+                SecurityAlgorithms.HmacSha256));
 
-        string token = new JwtSecurityTokenHandler()
-            .WriteToken(jwtSecurityToken);
-
-        string refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        var token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+        var refreshToken = GenerateRefreshToken();
 
         return new TokenDTO
         {
@@ -54,5 +63,11 @@ public sealed class JwtService : IJwtService
             RefreshToken = refreshToken,
             ExpirationDate = expires
         };
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        var randomBytes = RandomNumberGenerator.GetBytes(64);
+        return Convert.ToBase64String(randomBytes);
     }
 }

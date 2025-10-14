@@ -13,15 +13,37 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
 
         builder.HasKey(r => r.Id);
 
-        builder.Property(r => r.Token).HasMaxLength(200);
+        builder.Property(r => r.Token)
+               .IsRequired()
+               .HasMaxLength(200);
 
         builder.HasIndex(r => r.Token).IsUnique();
 
-        builder.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId);
+        builder.HasOne(r => r.User)
+               .WithMany()
+               .HasForeignKey(r => r.UserId)
+               .OnDelete(DeleteBehavior.Cascade)
+               .IsRequired();
 
-        builder.Property(r => r.CreatedAt).IsRequired();
-        builder.Property(r => r.UpdatedAt).IsRequired(false);
-        builder.Property(r => r.IsDeleted).IsRequired();
-        builder.Property(r => r.DeletedAt).IsRequired(false);
+        builder.Property(r => r.CreatedAt)
+               .IsRequired()
+               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.Property(r => r.Expires)
+               .IsRequired();
+
+        builder.Property(r => r.IsRevoked)
+               .IsRequired()
+               .HasDefaultValue(false);
+
+        builder.Property(r => r.RevokedAt)
+               .IsRequired(false);
+
+        builder.Property(r => r.IsDeleted)
+               .IsRequired()
+               .HasDefaultValue(false);
+
+        builder.Property(r => r.DeletedAt)
+               .IsRequired(false);
     }
 }

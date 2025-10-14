@@ -4,9 +4,9 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.InstallServices(builder.Configuration);
-
 builder.Services.AddControllers();
+
+builder.Services.InstallServices(builder.Configuration);
 
 var app = builder.Build();
 
@@ -25,6 +25,8 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionMiddleware();
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

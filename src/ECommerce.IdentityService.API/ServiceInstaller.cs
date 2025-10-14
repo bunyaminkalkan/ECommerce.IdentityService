@@ -1,8 +1,9 @@
-﻿using ECommerce.IdentityService.API.Data.Context;
+﻿using ECommerce.BuildingBlocks.Shared.Kernel.Auth.Options;
+using ECommerce.IdentityService.API.Data.Context;
 using ECommerce.IdentityService.API.Domain.Entities;
 using ECommerce.IdentityService.API.Middlewares;
-using ECommerce.IdentityService.API.Options;
 using ECommerce.IdentityService.API.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -63,19 +64,25 @@ public static class ServiceInstaller
         });
 
         //identity
-        services.AddIdentityCore<User>(options =>
+        services.AddIdentity<User, Role>(options =>
         {
+            // Password settings
+            options.Password.RequireDigit = true;
+            options.Password.RequireLowercase = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequiredLength = 6;
+
+            // User settings
+            options.User.RequireUniqueEmail = true;
+
+            // Token settings
             options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
         })
-        .AddEntityFrameworkStores<AppDbContext>()
-        .AddDefaultTokenProviders();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
 
-        services.AddScoped<UserManager<User>>();
-        services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-        services.AddScoped<ILookupNormalizer, UpperInvariantLookupNormalizer>();
-        services.AddScoped<IUserValidator<User>, UserValidator<User>>();
-        services.AddScoped<IPasswordValidator<User>, PasswordValidator<User>>();
-
+        // Token lifespan ayarı
         services.Configure<DataProtectionTokenProviderOptions>(options =>
         {
             options.TokenLifespan = TimeSpan.FromMinutes(5);
@@ -85,7 +92,6 @@ public static class ServiceInstaller
 
         #region Interfaces
         services.AddScoped<IJwtService, JwtService>();
-        services.AddScoped<ITokenService, TokenService>();
         #endregion
 
         #region Exceptions
@@ -106,7 +112,11 @@ public static class ServiceInstaller
 
         services.Configure<JwtOptions>(configuration.GetSection("JwtSettings"));
 
-        services.AddAuthentication()
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
             .AddJwtBearer();
 
         services.AddAuthorization();
