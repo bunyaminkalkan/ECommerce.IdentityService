@@ -1,7 +1,7 @@
 ﻿using ECommerce.BuildingBlocks.Shared.Kernel.Auth.Options;
+using ECommerce.BuildingBlocks.Shared.Kernel.Middlewares;
 using ECommerce.IdentityService.API.Data.Context;
 using ECommerce.IdentityService.API.Domain.Entities;
-using ECommerce.IdentityService.API.Middlewares;
 using ECommerce.IdentityService.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;

@@ -1,5 +1,5 @@
+using ECommerce.BuildingBlocks.Shared.Kernel.Extensions;
 using ECommerce.IdentityService.API;
-using ECommerce.IdentityService.API.Middlewares;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,8 +17,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("IdentityService API")
-              .WithTheme(ScalarTheme.BluePlanet)
-              .WithModels(false);
+              .WithTheme(ScalarTheme.BluePlanet);
     });
 }
 
